@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-CarProtect — שליפת דוח רכב מלא ממאגרי data.gov.il
-שימוש: python get_vehicle_report.py 69918002
+CarProtect - Vehicle report from data.gov.il
+Usage: python get_vehicle_report.py 69918002
 """
 
 import sys
 import json
 import requests
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 API_URL = "https://data.gov.il/api/3/action/datastore_search"
 
@@ -21,7 +21,6 @@ RESOURCES = {
 }
 
 def query(resource_id: str, plate: int, limit: int = 20, filter_field: str = "mispar_rechev") -> List[Dict]:
-    """שאילה גנרית ל-data.gov.il"""
     filters = {filter_field: plate}
     params = {
         "resource_id": resource_id,
@@ -39,8 +38,7 @@ def query(resource_id: str, plate: int, limit: int = 20, filter_field: str = "mi
     return []
 
 def get_vehicle_report(plate: int) -> Dict[str, Any]:
-    """מחזיר דוח מסודר לרכב"""
-    report: Dict[str, Any] = {
+    report = {
         "plate": plate,
         "found": False,
         "basic": {},
@@ -52,7 +50,6 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
         "flags": [],
     }
 
-    # 1. מאגר פעיל
     active = query(RESOURCES["active"], plate, limit=1)
     if active:
         report["found"] = True
@@ -72,7 +69,6 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
             "first_registration": b.get("moed_aliya_lakvish"),
         }
 
-    # 2. היסטוריית בעלויות
     ownership = query(RESOURCES["ownership"], plate, limit=50)
     if ownership:
         ownership_sorted = sorted(ownership, key=lambda x: x.get("baalut_dt", 0))
@@ -91,9 +87,8 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
             "types_seen": list(set(types)),
         }
         if had_company:
-            report["flags"].append("היה בעלות חברה/ליסינג/השכרה/סוחר")
+            report["flags"].append("had company / leasing / rental ownership")
 
-    # 3. קמ
     mileage_recs = query(RESOURCES["mileage"], plate, limit=1)
     if mileage_recs:
         m = mileage_recs[0]
@@ -106,7 +101,6 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
             "first_registration_date": m.get("rishum_rishon_dt"),
         }
 
-    # 4. ריקולים
     recalls = query(RESOURCES["recalls"], plate, limit=10, filter_field="MISPAR_RECHEV")
     if recalls:
         report["recalls"] = [
@@ -118,85 +112,83 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
             }
             for r in recalls
         ]
-        report["flags"].append(f"יש {len(recalls)} ריקולים פתוחים")
+        report["flags"].append(f"{len(recalls)} open recalls")
 
-    # 5. סטטוס לא פעיל
     if not report["found"]:
         inactive = query(RESOURCES["inactive"], plate, limit=1)
         final = query(RESOURCES["final_cancel"], plate, limit=1)
         if final:
             report["status"] = "final_cancellation"
-            report["flags"].append("ביטול סופי / ירד מהכביש")
+            report["flags"].append("final cancellation")
         elif inactive:
             report["status"] = "inactive"
-            report["flags"].append("לא פעיל (חסר תוקף)")
+            report["flags"].append("inactive")
 
     return report
 
 def print_report(report: Dict):
-    """הדפסה ידידותית למסך"""
     print("=" * 60)
-    print(f"דוח רכב מספר: {report['plate']}")
+    print("Vehicle report for plate:", report["plate"])
     print("=" * 60)
 
     if not report["found"] and report["status"] == "unknown":
-        print("הרכב לא נמצא במאגרים הפתוחים.")
+        print("Vehicle not found in open datasets.")
         return
 
     b = report["basic"]
     if b:
-        print(f"יצרן:     {b.get('manufacturer')}")
-        print(f"דגם:      {b.get('model')}")
-        print(f"שנה:      {b.get('year')}")
-        print(f"צבע:      {b.get('color')}")
-        print(f"דלק:      {b.get('fuel')}")
-        print(f"בעלות נוכחית: {b.get('current_ownership')}")
-        print(f"טסט אחרון: {b.get('last_test')}")
-        print(f"תוקף רישיון: {b.get('license_expiry')}")
+        print("Manufacturer:", b.get("manufacturer"))
+        print("Model:", b.get("model"))
+        print("Year:", b.get("year"))
+        print("Color:", b.get("color"))
+        print("Fuel:", b.get("fuel"))
+        print("Current ownership:", b.get("current_ownership"))
+        print("Last test:", b.get("last_test"))
+        print("License expiry:", b.get("license_expiry"))
         print()
 
     if report["mileage"]:
         km = report["mileage"].get("last_km")
         if km:
-            print(f"קמ אחרון: {km:,} קמ")
+            print(f"Last km: {km:,}")
         else:
-            print("קמ: לא זמין")
+            print("Last km: not available")
         print()
 
     if report["ownership_history"]:
-        print("היסטוריית בעלויות:")
+        print("Ownership history:")
         for o in report["ownership_history"]:
-            print(f"  {o['date']} — {o['type']}")
+            print(" ", o["date"], "-", o["type"])
         summary = report["ownership_summary"]
-        print(f"סהכ רשומות: {summary.get('records')}")
+        print("Records:", summary.get("records"))
         if summary.get("had_company_or_leasing"):
-            print("היה בעלות חברה/ליסינג/השכרה")
+            print("FLAG: Had company / leasing / rental ownership")
         print()
 
     if report["recalls"]:
-        print(f"ריקולים פתוחים: {len(report['recalls'])}")
+        print("Open recalls:", len(report["recalls"]))
         for r in report["recalls"]:
-            print(f"  - {r.get('description')}")
+            print(" -", r.get("description"))
         print()
 
-    print(f"סטטוס: {report['status']}")
+    print("Status:", report["status"])
     if report["flags"]:
-        print("דגלים:")
+        print("Flags:")
         for f in report["flags"]:
-            print(f"  * {f}")
+            print(" *", f)
 
     print("=" * 60)
 
 def main():
     if len(sys.argv) < 2:
-        print("שימוש: python get_vehicle_report.py <מספר_רכב>")
-        print("דוגמה: python get_vehicle_report.py 69918002")
+        print("Usage: python get_vehicle_report.py <plate_number>")
+        print("Example: python get_vehicle_report.py 69918002")
         sys.exit(1)
 
     try:
         plate = int(sys.argv[1].replace("-", ""))
     except ValueError:
-        print("מספר רכב לא תקין")
+        print("Invalid plate number")
         sys.exit(1)
 
     report = get_vehicle_report(plate)
