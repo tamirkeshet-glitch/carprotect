@@ -13,11 +13,20 @@
 - [תוכנית עבודה מלאה](./docs/WORK_PLAN.md)
 - [מקורות נתונים](./docs/DATA_SOURCES.md)
 - [ארכיטקטורה](./docs/ARCHITECTURE.md)
-- [סקריפט שליפת דוח (פעיל)](./scripts/vehicle_report.py)
+- [סקריפט CLI](./scripts/vehicle_report.py)
+- [בקאנד FastAPI](./backend/)
 
 ## התקדמות
 - [x] תיעוד תוכנית עבודה
 - [x] סקריפט Python לשליפת דוח מלא
-- [ ] Backend FastAPI
+- [x] Backend FastAPI (`GET /vehicle/{plate}`)
 - [ ] אפיון מסכים
 - [ ] אב-טיפוס מובייל
+
+## הרצת הבקאנד
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+# אז פתח: http://localhost:8000/docs
+```
