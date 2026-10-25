@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CarProtect — שליפת דו"ח רכב מלא ממאגרי data.gov.il
+CarProtect — שליפת דוח רכב מלא ממאגרי data.gov.il
 שימוש: python get_vehicle_report.py 69918002
 """
 
@@ -39,7 +39,7 @@ def query(resource_id: str, plate: int, limit: int = 20, filter_field: str = "mi
     return []
 
 def get_vehicle_report(plate: int) -> Dict[str, Any]:
-    """מחזיר דו"ח מסודר לרכב"""
+    """מחזיר דוח מסודר לרכב"""
     report: Dict[str, Any] = {
         "plate": plate,
         "found": False,
@@ -75,7 +75,6 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
     # 2. היסטוריית בעלויות
     ownership = query(RESOURCES["ownership"], plate, limit=50)
     if ownership:
-        # מיון לפי תאריך
         ownership_sorted = sorted(ownership, key=lambda x: x.get("baalut_dt", 0))
         report["ownership_history"] = [
             {"date": str(o.get("baalut_dt")), "type": o.get("baalut")} for o in ownership_sorted
@@ -86,7 +85,7 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
         had_company = any(any(kw in t for kw in company_keywords) for t in types)
 
         report["ownership_summary"] = {
-            "number_of_owners": len(set(types)) or len(ownership),  # גס משוער
+            "number_of_owners": len(set(types)) or len(ownership),
             "records": len(ownership),
             "had_company_or_leasing": had_company,
             "types_seen": list(set(types)),
@@ -94,7 +93,7 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
         if had_company:
             report["flags"].append("היה בעלות חברה/ליסינג/השכרה/סוחר")
 
-    # 3. ק"מ
+    # 3. קמ
     mileage_recs = query(RESOURCES["mileage"], plate, limit=1)
     if mileage_recs:
         m = mileage_recs[0]
@@ -137,7 +136,7 @@ def get_vehicle_report(plate: int) -> Dict[str, Any]:
 def print_report(report: Dict):
     """הדפסה ידידותית למסך"""
     print("=" * 60)
-    print(f"דו"ח רכב מספר: {report['plate']}")
+    print(f"דוח רכב מספר: {report['plate']}")
     print("=" * 60)
 
     if not report["found"] and report["status"] == "unknown":
@@ -158,7 +157,10 @@ def print_report(report: Dict):
 
     if report["mileage"]:
         km = report["mileage"].get("last_km")
-        print(f"ק"מ אחרון: {km:,} ק"מ" if km else "ק"מ: לא זמין")
+        if km:
+            print(f"קמ אחרון: {km:,} קמ")
+        else:
+            print("קמ: לא זמין")
         print()
 
     if report["ownership_history"]:
@@ -166,13 +168,13 @@ def print_report(report: Dict):
         for o in report["ownership_history"]:
             print(f"  {o['date']} — {o['type']}")
         summary = report["ownership_summary"]
-        print(f"סה"כ רשומות: {summary.get('records')}")
+        print(f"סהכ רשומות: {summary.get('records')}")
         if summary.get("had_company_or_leasing"):
-            print("⚠️  היה בעלות חברה/ליסינג/השכרה")
+            print("היה בעלות חברה/ליסינג/השכרה")
         print()
 
     if report["recalls"]:
-        print(f"⚠️  ריקולים פתוחים: {len(report['recalls'])}")
+        print(f"ריקולים פתוחים: {len(report['recalls'])}")
         for r in report["recalls"]:
             print(f"  - {r.get('description')}")
         print()
@@ -181,7 +183,7 @@ def print_report(report: Dict):
     if report["flags"]:
         print("דגלים:")
         for f in report["flags"]:
-            print(f"  ⚠️  {f}")
+            print(f"  * {f}")
 
     print("=" * 60)
 
@@ -200,7 +202,6 @@ def main():
     report = get_vehicle_report(plate)
     print_report(report)
 
-    # אופציה ל-JSON
     if "--json" in sys.argv:
         print("\n--- JSON ---")
         print(json.dumps(report, ensure_ascii=False, indent=2))
