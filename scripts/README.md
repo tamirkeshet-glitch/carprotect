@@ -1,25 +1,27 @@
-# סקריפט שליפת דו"ח רכב
+# סקריפט שליפת דוח רכב
 
 ## התקנה
 ```bash
-pip install -r requirements.txt
+pip install requests
 ```
 
 ## שימוש
 ```bash
-python get_vehicle_report.py 69918002
+python vehicle_report.py 69918002
 ```
 
 יציאה ב-JSON:
 ```bash
-python get_vehicle_report.py 69918002 --json
+python vehicle_report.py 69918002 --json
 ```
 
 ## מה הסקריפט מחזיר
 - פרטים בסיסיים (יצרן, דגם, שנה, צבע, דלק, טסט, תוקף)
 - היסטוריית בעלויות + דגל בעלות חברה/ליסינג
-- ק"מ אחרון
+- קמ אחרון
 - ריקולים פתוחים
 - סטטוס (פעיל / לא פעיל / ביטול סופי)
 
 הסקריפט מושך ישירות מ-data.gov.il בלי צד ג'.
+
+**קובץ פעיל:** `vehicle_report.py`
