@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CarProtect - בדיקת רכב</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 20px;
+      color: #1a1a1a;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: #0d47a1;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .search-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    input {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 18px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    input:focus { outline: none; border-color: #0d47a1; }
+    button {
+      padding: 14px 24px;
+      font-size: 16px;
+      background: #0d47a1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #1565c0; }
+    button:disabled { background: #90a4ae; cursor: not-allowed; }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card h2 {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+      color: #0d47a1;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .row:last-child { border-bottom: none; }
+    .label { color: #666; }
+    .value { font-weight: 600; }
+    .flag {
+      background: #fff3e0;
+      color: #e65100;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin: 4px 0;
+      font-size: 14px;
+    }
+    .flag.ok { background: #e8f5e9; color: #2e7d32; }
+    .error {
+      background: #ffebee;
+      color: #c62828;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    .ownership-item {
+      padding: 6px 0;
+      font-size: 14px;
+    }
+    #result { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>CarProtect</h1>
+    <p class="subtitle">בדיקת רכב ממקורות פתוחים • data.gov.il</p>
+
+    <div class="search-box">
+      <input type="text" id="plate" placeholder="מספר רכב" inputmode="numeric" maxlength="8">
+      <button id="btn" onclick="search()">בדוק</button>
+    </div>
+
+    <div id="loading" class="loading" style="display:none">טוען נתונים...</div>
+    <div id="error" class="error" style="display:none"></div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const API = "http://localhost:8000"; // שנה אם הבקאנד רץ במקום אחר
+
+    document.getElementById("plate").addEventListener("keypress", e => {
+      if (e.key === "Enter") search();
+    });
+
+    async function search() {
+      const plate = document.getElementById("plate").value.replace(/\D/g, "");
+      if (!plate || plate.length < 5) {
+        showError("הכנס מספר רכב תקין");
+        return;
+      }
+
+      document.getElementById("result").style.display = "none";
+      document.getElementById("error").style.display = "none";
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("btn").disabled = true;
+
+      try {
+        const res = await fetch(`${API}/vehicle/${plate}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.detail || "שגיאה בשליפת הנתונים");
+          return;
+        }
+
+        render(data);
+      } catch (e) {
+        showError("לא ניתן להתחבר לשרת. ודא שהבקאנד רץ.");
+      } finally {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("btn").disabled = false;
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById("error").textContent = msg;
+      document.getElementById("error").style.display = "block";
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("btn").disabled = false;
+    }
+
+    function render(d) {
+      const b = d.basic || {};
+      const m = d.mileage || {};
+      const own = d.ownership_history || [];
+      const summary = d.ownership_summary || {};
+
+      let flagsHtml = "";
+      if (d.flags && d.flags.length) {
+        flagsHtml = d.flags.map(f => `<div class="flag">${f}</div>`).join("");
+      } else {
+        flagsHtml = `<div class="flag ok">אין דגלים מיוחדים</div>`;
+      }
+
+      let ownHtml = own.map(o =>
+        `<div class="ownership-item">${o.date} — ${o.type}</div>`
+      ).join("") || "<div>אין נתוני בעלות</div>";
+
+      document.getElementById("result").innerHTML = `
+        <div class="card">
+          <h2>${b.manufacturer || ""} ${b.model || ""}</h2>
+          <div class="row"><span class="label">שנה</span><span class="value">${b.year || "-"}</span></div>
+          <div class="row"><span class="label">צבע</span><span class="value">${b.color || "-"}</span></div>
+          <div class="row"><span class="label">דלק</span><span class="value">${b.fuel || "-"}</span></div>
+          <div class="row"><span class="label">בעלות נוכחית</span><span class="value">${b.current_ownership || "-"}</span></div>
+        </div>
+
+        <div class="card">
+          <h2>סטטוס וטסט</h2>
+          <div class="row"><span class="label">סטטוס</span><span class="value">${d.status}</span></div>
+          <div class="row"><span class="label">טסט אחרון</span><span class="value">${b.last_test || "-"}</span></div>
+          <div class="row"><span class="label">תוקף רישיון</span><span class="value">${b.license_expiry || "-"}</span></div>
+          <div class="row"><span class="label">קמ אחרון</span><span class="value">${m.last_km ? m.last_km.toLocaleString() : "-"}</span></div>
+        </div>
+
+        <div class="card">
+          <h2>היסטוריית בעלויות</h2>
+          ${ownHtml}
+          <div class="row" style="margin-top:12px"><span class="label">רשומות</span><span class="value">${summary.records || 0}</span></div>
+        </div>
+
+        <div class="card">
+          <h2>דגלים</h2>
+          ${flagsHtml}
+        </div>
+      `;
+      document.getElementById("result").style.display = "block";
+    }
+  </script>
+</body>
+</html>
