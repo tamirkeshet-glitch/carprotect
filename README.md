@@ -16,22 +16,24 @@
 - [סקריפט CLI](./scripts/vehicle_report.py)
 - [בקאנד FastAPI](./backend/)
 - [אב-טיפוס ווב](./frontend/index.html)
+- [אב-טיפוס Flutter](./mobile/)
 
 ## התקדמות
 - [x] תיעוד תוכנית עבודה
 - [x] סקריפט Python לשליפת דוח מלא
-- [x] Backend FastAPI (`GET /vehicle/{plate}`)
-- [x] אב-טיפוס ווב פשוט
-- [ ] אפיון מסכים מובייל / אפליקציה מלאה
+- [x] Backend FastAPI
+- [x] אב-טיפוס ווב
+- [x] אב-טיפוס Flutter מובייל
+- [ ] OCR לזיהוי לוחית
+- [ ] שיפורים ופריסה
 
-## הרצת אב-טיפוס
+## הרצת אב-טיפוס Flutter
 ```bash
-# טרמינל 1 — בקאנד
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+# בקאנד
+cd backend && python -m uvicorn main:app --reload --host 0.0.0.0
 
-# טרמינל 2 — פתח דפדפן
-open frontend/index.html
-# או: cd frontend && python -m http.server 3000
+# מובייל
+cd mobile
+flutter pub get
+flutter run
 ```
